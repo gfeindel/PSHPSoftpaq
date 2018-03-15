@@ -21,9 +21,11 @@
     )
 
     begin {
-        $ftpRootUri = 'ftp://ftp.hp.com/pub/softpaq'
-        $webClient = New-Object System.Net.WebClient
-        $webClient.Credentials = New-Object System.Net.NetworkCredential -ArgumentList ('anonymous','anonymous')
+        $ftpRootUri = 'https://ftp.hp.com/pub/softpaq'
+        #$webClient = New-Object System.Net.WebClient
+        #$webClient.Credentials = New-Object System.Net.NetworkCredential -ArgumentList ('anonymous','anonymous')
+        $sourceFiles = @()
+        $destFiles = @()
     }
     process {
         foreach($sn in $SoftpaqNumber) {
@@ -34,15 +36,27 @@
             $folderName = "sp$numStart-$numEnd"
             $fileNameBase = "sp$sn"
 
+            Write-Verbose "Adding $fileNameBase.exe to list of download files."
+            $sourceFiles += "$ftpRootUri/$folderName/$fileNameBase.exe"
+            $destFiles += "$Destination\$fileNameBase.exe"
+
+            Write-Verbose "Adding $fileNameBase.cva to list of download files."
+            $sourceFiles += "$ftpRootUri/$folderName/$fileNameBase.cva"
+            $destFiles += "$Destination\$fileNameBase.cva"
+
             # Download the Softpaq
-            Write-Verbose "Downloading $fileNameBase.exe"
-            $uri = New-Object System.Uri("$ftpRootUri/$folderName/$fileNameBase.exe")
-            $webClient.DownloadFile($uri,"$Destination\$fileNameBase.exe")
+            #Write-Verbose "Downloading $fileNameBase.exe to $Destination"
+            #$uri = New-Object System.Uri("$ftpRootUri/$folderName/$fileNameBase.exe")
+            #$webClient.DownloadFile($uri,"$Destination\$fileNameBase.exe")
 
             # Download the CVA
-            Write-Verbose "Downloading $fileNameBase.cva"
-            $uri = New-Object System.Uri("$ftpRootUri/$folderName/$fileNameBase.cva")
-            $webClient.DownloadFile($uri,"$Destination\$fileNameBase.cva")
+            #Write-Verbose "Downloading $fileNameBase.cva to $Destination"
+            #$uri = New-Object System.Uri("$ftpRootUri/$folderName/$fileNameBase.cva")
+            #$webClient.DownloadFile($uri,"$Destination\$fileNameBase.cva")
         }
+    }
+    end {
+        Write-Verbose "Starting BITS job to download Softpaq files"
+        Start-BitsTransfer -Source $sourceFiles -Destination $destFiles
     }
 }
