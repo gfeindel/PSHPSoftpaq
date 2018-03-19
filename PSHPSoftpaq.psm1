@@ -3,3 +3,5 @@
 
 Export-ModuleMember Get-HPSoftpaq
 Export-ModuleMember Expand-HPSoftpaq
+Export-ModuleMember Get-IniContent
+Export-ModuleMember Import-HPSoftpaq

@@ -17,6 +17,7 @@
     param(
         [parameter(Mandatory=$true,ValueFromPipeline=$true)]
         [int[]]$SoftpaqNumber,
+        [ValidateScript({Test-Path $_})]
         [string]$Destination = "."
     )
 
