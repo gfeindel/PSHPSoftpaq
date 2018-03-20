@@ -3,45 +3,37 @@ function Import-HPSoftpaq {
     .SYNOPSIS
         Imports HP Softpaq-based driver packages into ConfigMgr.
     .DESCRIPTION
-        Import and categorize HP SOftpaqs into Configuration Manager 2012.
-    .PARAMETER OS
-        The OS version the driver applies to.
-    .PARAMETER SoftpaqNumber
-        The ID of the Softpaq. Looks like SPXXXXXX
-    .PARAMETER UncDriverPath
-        The root folder containing the driver folder structure described in Notes.
-    .NOTES
-        This script assumes that:
-        1. You have created categories in ConfigMgr that match the platform name
-           as HP defines it in the CVA file.
-        2. You have created a driver folder structure that looks like this:
-           Drivers Root folder
-            win7
-             HP
-              SPxxxxx
-            win10
-             HP
-              SPxxxxx
-             
+        Import and categorize HP SOftpaqs into Configuration Manager 2012. If a driver package
+        for the Softpaq does not exist, it creates one. The name of the driver package is the
+        Softpaq name, and the description is the US Software Title.
+    
+    .PARAMETER FolderPath
+        The folder containing the Softpaq contents and CVA file.
 
+    .NOTES
         1.0 - Created
         1.1 - Fixed empty categories handling, improved comment-based help.
         2.0 - Added to PSHPSoftpaq module, improved CVA support.
+        2.1 - Added ability to create drivers and tag drivers based on OS and platform.
 #>
 [CmdletBinding()]
 param(
 [ValidateNotNullOrEmpty()]
 [ValidateScript({(Test-Path Filesystem::$_) -and (Test-Path "Filesystem::$_\*.cva")})]
-[string]$FolderPath=""
+[string]$FolderPath="",
+
+[ValidateScript({Test-Path Filesystem::$_})]
+[string]$DriverPackageFolder=''
 )
 
 begin {}
 
 process {
-    #[string]$UncSpPath = "$UncDriverPath\$OS\HP\$SoftpaqNumber"
     [string]$CvaPath = "$FolderPath\*.cva"
     [string]$SoftpaqNumber = ""
     [string]$SoftpaqDescription = ""
+    [string]$smsSiteCode = (Get-CMSite).Name
+    [string]$DefaultDriverPackageFolder = "\\localhost\SMS_$smsSiteCode\OSD\Lib\Drivers" 
     $driverPackage = $null
 
     [System.Collections.Hashtable]$cvaContent = @{}
@@ -60,6 +52,15 @@ process {
         throw "Unable to read CVA file."
     }
 
+    if(-not $DriverPackageFolder) {
+        $DriverPackageFolder = "$DefaultDriverPackageFolder\$($cvaContent.Softpaq.SoftpaqNumber)"
+        Write-Verbose "No driver package folder provided, using default: $DriverPackageFolder"
+    }
+
+    if(-not (Test-Path Filesystem::$DriverPackageFolder)) {
+        throw "DriverPackageFolder does not exist or is not accessible."
+    }
+
     # Check for driver package and create if does not exist.
     $driverPackage = Get-CMDriverPackage -Name $cvaContent.Softpaq.SoftpaqNumber -EA SilentlyContinue
     if(-not $driverPackage) {
@@ -68,7 +69,7 @@ process {
             Name = $cvaContent.Softpaq.SoftpaqNumber 
             Description = $cvaContent['Software Title'].US
             # This should be a parameter or config file item.
-            Path = "\\DURSCCM1\SMS_FM1\OSD\Lib\DriverPackages\HP\$($cvaContent.Softpaq.SoftpaqNumber)"
+            Path = $DriverPackageFolder
         }
         $driverPackage = New-CMDriverPackage @parms
     } else {
