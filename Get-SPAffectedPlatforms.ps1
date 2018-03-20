@@ -11,7 +11,7 @@ function Get-SPAffectedPlatforms {
     #>
     param(
         [ValidateNotNullOrEmpty()]
-        [ValidateScript({Test-Path $_ -and ((Get-Item $_).Extension -eq '.cva')})]
+        [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -in @('.ini','.cva'))})]
         [string]$CvaFilePath
     )
 
